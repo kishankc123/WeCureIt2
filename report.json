@@ -1,0 +1,96 @@
+{
+  "version": "0.1.0",
+  "name": "we-cure-it",
+  "dependencies": {
+    "@react-icons/all-files": {
+      "version": "4.1.0",
+      "resolved": "https://registry.npmjs.org/@react-icons/all-files/-/all-files-4.1.0.tgz",
+      "overridden": false
+    },
+    "@tailwindcss/postcss": {
+      "version": "4.0.17",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/postcss/-/postcss-4.0.17.tgz",
+      "overridden": false
+    },
+    "@types/node": {
+      "version": "20.17.30",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-20.17.30.tgz",
+      "overridden": false
+    },
+    "@types/react-date-range": {
+      "version": "1.4.10",
+      "resolved": "https://registry.npmjs.org/@types/react-date-range/-/react-date-range-1.4.10.tgz",
+      "overridden": false
+    },
+    "@types/react-dom": {
+      "version": "19.0.4",
+      "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.0.4.tgz",
+      "overridden": false
+    },
+    "@types/react": {
+      "version": "19.0.12",
+      "resolved": "https://registry.npmjs.org/@types/react/-/react-19.0.12.tgz",
+      "overridden": false
+    },
+    "components": {
+      "version": "0.1.0",
+      "resolved": "https://registry.npmjs.org/components/-/components-0.1.0.tgz",
+      "overridden": false
+    },
+    "date-fns": {
+      "version": "4.1.0",
+      "resolved": "https://registry.npmjs.org/date-fns/-/date-fns-4.1.0.tgz",
+      "overridden": false
+    },
+    "lucide-react": {
+      "version": "0.487.0",
+      "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.487.0.tgz",
+      "overridden": false
+    },
+    "next-auth": {
+      "version": "4.24.11",
+      "resolved": "https://registry.npmjs.org/next-auth/-/next-auth-4.24.11.tgz",
+      "overridden": false
+    },
+    "next": {
+      "version": "15.2.3",
+      "resolved": "https://registry.npmjs.org/next/-/next-15.2.3.tgz",
+      "overridden": false
+    },
+    "pg": {
+      "version": "8.14.1",
+      "resolved": "https://registry.npmjs.org/pg/-/pg-8.14.1.tgz",
+      "overridden": false
+    },
+    "react-date-range": {
+      "version": "2.0.1",
+      "resolved": "https://registry.npmjs.org/react-date-range/-/react-date-range-2.0.1.tgz",
+      "overridden": false
+    },
+    "react-dom": {
+      "version": "19.0.0",
+      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.0.0.tgz",
+      "overridden": false
+    },
+    "react-icons": {
+      "version": "5.5.0",
+      "resolved": "https://registry.npmjs.org/react-icons/-/react-icons-5.5.0.tgz",
+      "overridden": false
+    },
+    "react": {
+      "version": "19.0.0",
+      "resolved": "https://registry.npmjs.org/react/-/react-19.0.0.tgz",
+      "overridden": false
+    },
+    "tailwindcss": {
+      "version": "4.0.17",
+      "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.0.17.tgz",
+      "overridden": false
+    },
+    "typescript": {
+      "version": "5.8.2",
+      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.8.2.tgz",
+      "overridden": false
+    }
+  }
+}
