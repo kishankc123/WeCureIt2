@@ -50,7 +50,7 @@ export default function LoginPage() {
     } else if (userRole === "doctor") {
       router.push("/doctor/homepage");
     } else if (userRole == "patient") {
-      router.push("/Patient/Homepage");
+      router.push("/patient/homepage");
       router.refresh();
     } else {
       setError("Invalid role");

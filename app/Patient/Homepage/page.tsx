@@ -14,9 +14,9 @@ export default function PatientDashboard() {
         <h2 className="text-lg font-semibold text-left w-full max-w-4xl">Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 max-w-4xl w-full">
         {[
-          { title: 'Personal Information', desc: 'View or Edit Your Personal Information', link: '/Patient/profile' },
-          { title: 'Appointments', desc: 'Book new appointments and manage existing ones', link: '/Patient/Appointment' },
-          { title: 'Payment Methods', desc: 'Add or remove payment methods', link: '/Patient/Payment' },
+          { title: 'Personal Information', desc: 'View or Edit Your Personal Information', link: '/patient/profile' },
+          { title: 'Appointments', desc: 'Book new appointments and manage existing ones', link: '/patient/appointment' },
+          { title: 'Payment Methods', desc: 'Add or remove payment methods', link: '/patient/payment' },
         ].map((item, index) => (
           <Link key={index} href={item.link} passHref>
             <div className="bg-white p-6 rounded-lg shadow-sm border text-left cursor-pointer h-25 flex flex-col justify-between">

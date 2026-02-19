@@ -8,10 +8,10 @@ export default function LandingPage() {
             <a href="/">WeCureIt</a>
           </h1>
           <div className="space-x-4">
-          <Link href="/General/Login" className="hover:underline bg-gray-200 p-2 border rounded-md">
+          <Link href="/general/login" className="hover:underline bg-gray-200 p-2 border rounded-md">
               Login 
             </Link>
-            <Link href="/General/register" className="hover:underline bg-black text-white p-2 border rounded-md">
+            <Link href="/general/register" className="hover:underline bg-black text-white p-2 border rounded-md">
               Register
             </Link>
           </div>

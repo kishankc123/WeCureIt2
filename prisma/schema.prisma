@@ -8,150 +8,251 @@ datasource db {
 }
 
 model User {
-  userId      Int       @id @default(autoincrement())   @map("user_id")
-  name        String?
-  dob         DateTime?
-  gender      String?
-  address     String?
-  phoneNumber String?   @db.VarChar(20)   @map("phone_number")
-  email       String?   @unique @db.VarChar(100)
-  password    String
-  role        String?   @db.VarChar(50)
-  appointments Appointment[]
-  doctors     Doctor[]
-  patientHistory PatientHistory[]  
-  patientInfo PatientInfo[]  
+  name                String?
+  dob                 DateTime?            @db.Date
+  gender              String?
+  address             String?
+  email               String?              @unique @db.VarChar(100)
+  role                String?              @db.VarChar(50)
+  password            String
+  phoneNumber         String?              @map("phone_number") @db.VarChar(20)
+  userId              Int                  @id @default(autoincrement()) @map("user_id")
+  doctors             Doctor?
+  email_2fa_codes     email_2fa_codes?
+  patientInfo         PatientInfo[]
+  two_factor_settings two_factor_settings?
 
   @@map("users")
 }
 
 model Appointment {
-  appointmentId           Int                         @id @default(autoincrement()) @map("appointment_id")
-  duration               Int?
-  startTime              DateTime?                   @db.Time(6)  @map("start_time")
-  date                   DateTime?                   @db.Date
-  clinicId               Int?     @map("clinic_id")
-  examRoomId             Int?     @map("exam_room_id")
-  doctorId               Int?     @map("doctor_id")
-  clinic                 Clinic?                     @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
-  doctor                 User?                       @relation(fields: [doctorId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
-  examRoom               ExamRoom?              @relation(fields: [examRoomId], references: [examRoomId], onDelete: Cascade, onUpdate: NoAction)
-  doctorScheduleBreakdown DoctorScheduleBreakdown[]  
-  
-  @@map("appointment") 
+  appointmentId           Int                       @id @default(autoincrement()) @map("appointment_id")
+  duration                Int?
+  startTime               DateTime?                 @map("start_time") @db.Time(6)
+  date                    DateTime?                 @db.Date
+  clinicId                Int?                      @map("clinic_id")
+  examRoomId              Int?                      @map("exam_room_id")
+  doctorId                Int?                      @map("doctor_id")
+  patient_id              Int?
+  card_id                 Int?
+  status                  AppointmentStatus         @default(VALID)
+  card                    Card?                     @relation(fields: [card_id], references: [cardId], onUpdate: NoAction)
+  clinic                  Clinic?                   @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
+  doctor                  Doctor?                   @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  examRoom                ExamRoom?                 @relation(fields: [examRoomId], references: [examRoomId], onDelete: Cascade, onUpdate: NoAction)
+  patient_info            PatientInfo?              @relation(fields: [patient_id], references: [patientId], onDelete: Cascade, onUpdate: NoAction)
+  doctorScheduleBreakdown DoctorScheduleBreakdown[]
+
+  @@map("appointment")
 }
 
 model Clinic {
-  clinicId        Int                @id @default(autoincrement())      @map("clinic_id")
-  location        String?            @db.VarChar(255)   
+  clinicId        Int              @id @default(autoincrement()) @map("clinic_id")
+  locationId      Int
+  name            String
   appointments    Appointment[]
-  doctorSchedules DoctorSchedule[]     
-  examRooms       ExamRoom[]   
+  location        location         @relation(fields: [locationId], references: [id])
+  doctorSchedules DoctorSchedule[]
+  examRooms       ExamRoom[]
 
-  @@map("clinic")  
+  @@map("clinic")
 }
 
 model DoctorAvailability {
-  id         Int     @id @default(autoincrement())
-  doctorId   Int?     @map("doctor_id")
-  date       DateTime? @db.Date
-  startTime  DateTime? @db.Time(6)      @map("start_time")
-  endTime    DateTime? @db.Time(6)      @map("end_time")
-  doctor     Doctor?   @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  id              Int             @id @default(autoincrement())
+  doctorId        Int?            @map("doctor_id")
+  date            DateTime?       @db.Date
+  startTime       DateTime?       @map("start_time") @db.Time(6)
+  endTime         DateTime?       @map("end_time") @db.Time(6)
+  doctor          Doctor?         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  doctor_schedule DoctorSchedule?
 
-  @@map("doctor_availability")  
+  @@map("doctor_availability")
 }
 
 model DoctorLicense {
-  id         Int     @id @default(autoincrement())
-  doctorId Int?     @map("doctor_id")
-  location String?  @db.VarChar(255)
-  specialty String? @db.VarChar(100)
-  doctor   Doctor?  @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  id           Int        @id @default(autoincrement())
+  doctorId     Int?       @map("doctor_id")
+  specialty_id Int?
+  state_id     Int?
+  doctor       Doctor?    @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  specialty    specialty? @relation(fields: [specialty_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  state        state?     @relation(fields: [state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("doctor_license")  
+  @@unique([doctorId, state_id, specialty_id])
+  @@map("doctor_license")
 }
 
 model DoctorScheduleBreakdown {
-  id         Int     @id @default(autoincrement())
-  scheduleId      Int?      @map("schedule_id")
-  status          String?           @db.VarChar(20)
-  appointmentId   Int?      @map("appointment_id")
-  startTime       DateTime?         @db.Time(6)     @map("start_time")
-  endTime         DateTime?         @db.Time(6)     @map("end_time")
-  appointment     Appointment?      @relation(fields: [appointmentId], references: [appointmentId], onDelete: NoAction, onUpdate: NoAction)
-  doctorSchedule  DoctorSchedule?  @relation(fields: [scheduleId], references: [scheduleId], onDelete: NoAction, onUpdate: NoAction)
+  id             Int              @id @default(autoincrement())
+  scheduleId     Int?             @map("schedule_id")
+  appointmentId  Int?             @map("appointment_id")
+  startTime      DateTime?        @map("start_time") @db.Time(6)
+  endTime        DateTime?        @map("end_time") @db.Time(6)
+  status         BreakdownStatus?
+  appointment    Appointment?     @relation(fields: [appointmentId], references: [appointmentId], onDelete: NoAction, onUpdate: NoAction)
+  doctorSchedule DoctorSchedule?  @relation(fields: [scheduleId], references: [scheduleId], onDelete: NoAction, onUpdate: NoAction)
 
-  @@map("doctor_schedule_breakdown") 
+  @@map("doctor_schedule_breakdown")
 }
 
 model DoctorSchedule {
-  scheduleId               Int                         @id @default(autoincrement())  @map("schedule_id")
-  doctorId                 Int?     @map("doctor_id")
-  clinicId                 Int?     @map("clinic_id")
-  startTime                DateTime?                   @db.Time(6)      @map("start_time")
-  endTime                  DateTime?                   @db.Time(6)      @map("end_time")
-  doctorScheduleBreakdown  DoctorScheduleBreakdown[]      
-  clinic                   Clinic?                     @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
-  doctor                   Doctor?                     @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  scheduleId              Int                       @id @default(autoincrement()) @map("schedule_id")
+  doctorId                Int?                      @map("doctor_id")
+  clinicId                Int?                      @map("clinic_id")
+  startTime               DateTime?                 @map("start_time") @db.Time(6)
+  endTime                 DateTime?                 @map("end_time") @db.Time(6)
+  date                    DateTime?                 @db.Date
+  availabilityId          Int                       @unique
+  scheduled_end_time      DateTime?                 @db.Time(6)
+  doctor_availability     DoctorAvailability        @relation(fields: [availabilityId], references: [id])
+  clinic                  Clinic?                   @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
+  doctor                  Doctor?                   @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  doctorScheduleBreakdown DoctorScheduleBreakdown[]
 
-  @@map("doctor_schedule") 
+  @@map("doctor_schedule")
 }
 
 model Doctor {
-  doctorId            Int                   @id @default(autoincrement())     @map("doctor_id")
-  userId              Int?      @map("user_id")
-  doctorInfo          String?     @map("doctor_info")
-  doctorAvailability  DoctorAvailability[]     
-  doctorLicenses      DoctorLicense[]    
-  doctorSchedules     DoctorSchedule[]    
-  user                User?                 @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
-  
+  doctorId           Int                  @id @default(autoincrement()) @map("doctor_id")
+  userId             Int?                 @unique @map("user_id")
+  doctorInfo         String?              @map("doctor_info")
+  appointments       Appointment[]
+  doctorAvailability DoctorAvailability[]
+  doctorLicenses     DoctorLicense[]
+  doctorSchedules    DoctorSchedule[]
+  user               User?                @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
+  patientHistory     PatientHistory[]
+
   @@map("doctors")
 }
 
 model ExamRoom {
-  clinicId    Int?      @map("clinic_id")
-  examRoomId  Int             @id @default(autoincrement())     @map("exam_room_id")
-  capability  String?         @db.VarChar(100)
+  clinicId     Int?           @map("clinic_id")
+  examRoomId   Int            @id @default(autoincrement()) @map("exam_room_id")
+  specialty_id Int?
+  status       ExamRoomStatus @default(VACANT)
+  name         String?
   appointments Appointment[]
-  clinic      Clinic?         @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
+  clinic       Clinic?        @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
+  specialty    specialty[]    @relation("RoomSpecialties")
 
   @@map("exam_room")
 }
 
 model PatientHistory {
-  historyId   Int           @id @default(autoincrement())     @map("history_id")
-  patientId   Int?      @map("patient_id")
-  doctorId    Int?      @map("doctor_id")
+  historyId   Int          @id @default(autoincrement()) @map("history_id")
+  patientId   Int?         @map("patient_id")
+  doctorId    Int?         @map("doctor_id")
   text        String?
-  date        DateTime?     @db.Date
-  doctor      User?         @relation(fields: [doctorId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
-  patientInfo PatientInfo?      @relation(fields: [patientId], references: [patientId], onDelete: Cascade, onUpdate: NoAction)
+  date        DateTime?    @db.Date
+  doctor      Doctor?      @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  patientInfo PatientInfo? @relation(fields: [patientId], references: [patientId], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("patient_history")
 }
 
 model PatientInfo {
-  patientId       Int             @id @default(autoincrement())   @map("patient_id")
-  userId          Int?      @map("user_id")
-  user            User?           @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
-  patientHistory  PatientHistory[]     
-  cards           Card[]          // 1-to-many relation: patient can have multiple cards
+  patientId      Int              @id @default(autoincrement()) @map("patient_id")
+  userId         Int?             @map("user_id")
+  appointment    Appointment[]
+  cards          Card[]
+  patientHistory PatientHistory[]
+  user           User?            @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("patient_info")
 }
 
 model Card {
-  cardId       Int       @id @default(autoincrement())  @map("card_id")
-  patientId    Int      @map("patient_id")
-  cardNumber   String     @map("card_number")
-  cvc          String
-  expiryMonth  Int      @map("expiry_month")
-  expiryYear   Int      @map("expiry_year")
-  cardName     String       @map("card_name")
-
-  patientInfo  PatientInfo     @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  cardId      Int           @id @default(autoincrement()) @map("card_id")
+  patientId   Int           @map("patient_id")
+  cardNumber  String        @map("card_number")
+  cvc         String
+  expiryMonth Int           @map("expiry_month")
+  expiryYear  Int           @map("expiry_year")
+  cardName    String        @map("card_name")
+  appointment Appointment[]
+  patientInfo PatientInfo   @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
 
   @@map("card")
+}
+
+model PasswordToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  email     String?  @unique
+  role      String?  @db.VarChar(50)
+  name      String?
+
+  @@index([token])
+}
+
+model email_2fa_codes {
+  id         String   @id
+  user_id    Int      @unique
+  email      String
+  code       String
+  expires_at DateTime
+  created_at DateTime @default(now())
+  users      User     @relation(fields: [user_id], references: [userId], onDelete: Cascade)
+}
+
+model location {
+  id       Int      @id @default(autoincrement())
+  city     String
+  state_id Int?
+  clinic   Clinic[]
+  state    state?   @relation(fields: [state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([city, state_id])
+}
+
+model specialty {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  doctor_license DoctorLicense[]
+  exam_room      ExamRoom[]      @relation("RoomSpecialties")
+}
+
+model state {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  doctor_license DoctorLicense[]
+  location       location[]
+}
+
+model two_factor_settings {
+  id                   String   @id
+  user_id              Int      @unique
+  is_authenticator_on  Boolean  @default(false)
+  is_email_on          Boolean  @default(false)
+  is_backup_on         Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime
+  authenticator_secret String?
+  backup_codes         String[]
+  users                User     @relation(fields: [user_id], references: [userId], onDelete: Cascade)
+}
+
+enum AppointmentStatus {
+  VALID
+  CANCELLED
+  CANCELLED__DOCTOR_NO_LONGER_AVAILABLE @map("CANCELLED: DOCTOR NO LONGER AVAILABLE")
+  CANCELLED__BY_PATIENT                 @map("CANCELLED: BY PATIENT")
+  CANCELLED__BY_DOCTOR                  @map("CANCELLED: BY DOCTOR")
+  CANCELLED__BY_PATIENT__50_CHARGE      @map("CANCELLED: BY PATIENT $50 CHARGE")
+}
+
+enum BreakdownStatus {
+  APPOINTMENT
+  BREAK
+  DOCUMENTATION
+  AVAILABLE
+}
+
+enum ExamRoomStatus {
+  VACANT
+  IN_USE
 }

@@ -1,5 +1,9 @@
 import { neon } from '@neondatabase/serverless';
+import { PrismaClient } from "@prisma/client";
 import { da } from 'date-fns/locale';
+
+const prisma = new PrismaClient();
+
 
 export const db = neon(process.env.DATABASE_URL!);
 export type DoctorType = {
@@ -181,20 +185,32 @@ export type DoctorType = {
     }
   }
   
-  export async function getUserInfo(email: String) {
-    try {
-      // Direct database query with email and password
-      const [user] = await db`
-        SELECT user_id, email, role, name,phone_number,gender,address,dob 
-        FROM users 
-        WHERE email = ${email}`;
-  
-      return user || null;
-    } catch (error) {
-      console.error('Database Error:', error);
-      throw new Error('Failed to fetch the user information, email = ' + email);
-    }
+
+export async function getUserInfo(email: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        email: email,
+      },
+      select: {
+        userId: true,
+        email: true,
+        role: true,
+        name: true,
+        phoneNumber: true,
+        gender: true,
+        address: true,
+        dob: true,
+      },
+    });
+
+    return user; // already null if not found
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch the user information, email = ' + email);
   }
+}
+
   
   export async function getAvailability(doctor_id: number) {
     try {
