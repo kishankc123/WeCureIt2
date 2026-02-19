@@ -138,76 +138,57 @@ export async function updateAvailability({
   }
 }
 
+export async function createAppointment(
+  appointment: AppointmentType,
+  user_id: number
+) {
+  try {
+    const patient = await prisma.patientInfo.findFirst({
+      where: { userId: user_id },
+    });
 
-export async function createAppointment(appointment: AppointmentType, user_id: number) {
-    try {
-        const [user] = await db`
-        SELECT patient_id
-        FROM patient_info
-        WHERE user_id = ${user_id}`;
-        const patient_id = user?.patient_id || 0;
-        await db`
-        UPDATE doctor_availability 
-        SET start_time = (start_time + INTERVAL '30 minutes')::TIME
-        WHERE
-        doctor_id = ${appointment.doctor_id} AND
-        date = ${appointment.date} AND
-        start_time = ${appointment.start_time}
-      `;
-        const [facility] = await db`
-        SELECT clinic_id 
-        FROM clinics 
-        WHERE location = ${appointment.location}`;
+    if (!patient) throw new Error("Patient not found");
 
-        // Book the appointment
-        const inserted = await db`
-        INSERT INTO appointments (
-        duration, 
-        start_time, 
-        date, 
-        clinic_id, 
-        exam_room_id, 
-        doctor_id, 
-        patient_id
-        ) VALUES (
-        ${appointment.duration}, 
-        ${appointment.start_time},
-        ${appointment.date},  
-        ${facility.clinic_id}, 
-        1, 
-        ${appointment.doctor_id}, 
-        ${patient_id})
-        RETURNING appointment_id
-    `;
-        const result = await db`
-        SELECT 
-        *, 
-        TO_CHAR(date::timestamp, 'Month DD, YYYY') AS date
-        FROM appointments
-        WHERE appointment_id = ${inserted[0].appointment_id}
-        `;
-        return result;
-    } catch (error) {
-        console.error('Database Error:', error);
-        console.error('Failed to create Appointment = ' + JSON.stringify(appointment));
-        return { message: 'Database Error: Failed to create Appointment' };
-    }
+    const created = await prisma.appointment.create({
+      data: {
+        duration: Number(appointment.duration),
+        startTime: new Date(`1970-01-01T${appointment.start_time}`),
+        date: new Date(appointment.date),
+        clinicId: appointment.clinic_id,
+        examRoomId: 1,
+        doctorId: appointment.doctor_id,
+        patientId: patient.patientId,
+      },
+    });
+
+    return created;
+  } catch (error) {
+    console.error("Database Error:", error);
+    return { message: "Database Error: Failed to create Appointment" };
+  }
 }
 
-export async function deleteAppointment(appointment: AppointmentType, patient_id: number) {
+
+
+  export async function deleteAppointment(
+    appointment: AppointmentType,
+    patient_id: number
+  ) {
     try {
-      await db`
-        DELETE FROM appointment 
-        WHERE 
-          appointment_id = ${appointment.appointment_id} AND
-          patient_id = ${patient_id}
-      `;
+      await prisma.appointment.deleteMany({
+        where: {
+          appointmentId: appointment.appointment_id,
+          patientId: patient_id,
+        },
+      });
     } catch (error) {
-      console.error('Database Error:', error);
-      console.error('Failed to delete appointment:', JSON.stringify(appointment));
-      return { message: `Database Error: Failed to delete appointment, appointment_id = ${appointment.appointment_id}` };
+      console.error("Database Error:", error);
+      return {
+        message: `Database Error: Failed to delete appointment, appointment_id = ${appointment.appointment_id}`,
+      };
     }
   }
+  
 
   export async function createPatient(user: PatientType) {
     try {
@@ -239,33 +220,35 @@ export async function deleteAppointment(appointment: AppointmentType, patient_id
   
 
   export async function addLicense(license: LicenseType) {
-    try {
-      await prisma.doctorLicense.create({
-        data: {
-          doctorId: license.doctor_id,
-          location: license.location,
-          specialty: license.specialty,
-        },
-      });
-    } catch (error) {
-      console.error("Database Error:", error);
-    }
+  try {
+    await prisma.doctorLicense.create({
+      data: {
+        doctorId: license.doctor_id,
+        specialtyId: license.specialty_id,
+        stateId: license.state_id,
+      },
+    });
+  } catch (error) {
+    console.error("Database Error:", error);
   }
+}
+
   
 
-  export async function deleteLicense(license: LicenseType) {
-    try {
-      await prisma.doctorLicense.deleteMany({
-        where: {
-          doctorId: license.doctor_id,
-          location: license.location,
-          specialty: license.specialty,
-        },
-      });
-    } catch (error) {
-      console.error("Database Error:", error);
-    }
+export async function deleteLicense(license: LicenseType) {
+  try {
+    await prisma.doctorLicense.deleteMany({
+      where: {
+        doctorId: license.doctor_id,
+        specialtyId: license.specialty_id,
+        stateId: license.state_id,
+      },
+    });
+  } catch (error) {
+    console.error("Database Error:", error);
   }
+}
+
   
   export async function updateUserInfo(user: UserType) {
     try {
@@ -289,22 +272,24 @@ export async function deleteAppointment(appointment: AppointmentType, patient_id
   
 
 
-  export async function createFacility(facility: FacilityType) {
-    try {
-      const data = await prisma.clinic.create({
-        data: {
-          location: facility.location,
-        },
-        select: {
-          clinicId: true,
-        },
-      });
+  // export async function createFacility(facility: FacilityType) {
+  //   try {
+  //     const data = await prisma.clinic.create({
+  //       data: {
+  //         name: facility.
+  //         locationId: facility.location_id,
+  //       },
+  //       select: {
+  //         clinicId: true,
+  //       },
+  //     });
   
-      return data.clinicId;
-    } catch (error) {
-      console.error("Database Error:", error);
-    }
-  }
+  //     return data.clinicId;
+  //   } catch (error) {
+  //     console.error("Database Error:", error);
+  //   }
+  // }
+  
   
 
   export async function deleteFacility(facility: FacilityType) {

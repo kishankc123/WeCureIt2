@@ -33,14 +33,14 @@ model Appointment {
   clinicId                Int?                      @map("clinic_id")
   examRoomId              Int?                      @map("exam_room_id")
   doctorId                Int?                      @map("doctor_id")
-  patient_id              Int?
-  card_id                 Int?
+  patientId               Int?                      @map("patient_id")
+  cardId                  Int?                      @map("card_id")
   status                  AppointmentStatus         @default(VALID)
-  card                    Card?                     @relation(fields: [card_id], references: [cardId], onUpdate: NoAction)
+  card                    Card?                     @relation(fields: [cardId], references: [cardId], onUpdate: NoAction)
   clinic                  Clinic?                   @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
   doctor                  Doctor?                   @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
   examRoom                ExamRoom?                 @relation(fields: [examRoomId], references: [examRoomId], onDelete: Cascade, onUpdate: NoAction)
-  patient_info            PatientInfo?              @relation(fields: [patient_id], references: [patientId], onDelete: Cascade, onUpdate: NoAction)
+  patientInfo             PatientInfo?              @relation(fields: [patientId], references: [patientId], onDelete: Cascade, onUpdate: NoAction)
   doctorScheduleBreakdown DoctorScheduleBreakdown[]
 
   @@map("appointment")
@@ -50,8 +50,9 @@ model Clinic {
   clinicId        Int              @id @default(autoincrement()) @map("clinic_id")
   locationId      Int
   name            String
+  address         String?
   appointments    Appointment[]
-  location        location         @relation(fields: [locationId], references: [id])
+  location        Location         @relation(fields: [locationId], references: [id])
   doctorSchedules DoctorSchedule[]
   examRooms       ExamRoom[]
 
@@ -59,27 +60,28 @@ model Clinic {
 }
 
 model DoctorAvailability {
-  id              Int             @id @default(autoincrement())
-  doctorId        Int?            @map("doctor_id")
-  date            DateTime?       @db.Date
-  startTime       DateTime?       @map("start_time") @db.Time(6)
-  endTime         DateTime?       @map("end_time") @db.Time(6)
-  doctor          Doctor?         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
-  doctor_schedule DoctorSchedule?
+  id        Int             @id @default(autoincrement())
+  doctorId  Int?            @map("doctor_id")
+  date      DateTime?       @db.Date
+  startTime DateTime?       @map("start_time") @db.Time(6)
+  endTime   DateTime?       @map("end_time") @db.Time(6)
+  doctor    Doctor?         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  schedule  DoctorSchedule? @relation("AvailabilitySchedule")
 
   @@map("doctor_availability")
 }
 
 model DoctorLicense {
-  id           Int        @id @default(autoincrement())
-  doctorId     Int?       @map("doctor_id")
-  specialty_id Int?
-  state_id     Int?
-  doctor       Doctor?    @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
-  specialty    specialty? @relation(fields: [specialty_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  state        state?     @relation(fields: [state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id          Int        @id @default(autoincrement())
+  doctorId    Int?       @map("doctor_id")
+  specialtyId Int?       @map("specialty_id")
+  stateId     Int?       @map("state_id")
+  speciality  String?    @db.VarChar(100)
+  doctor      Doctor?    @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
+  specialty   Specialty? @relation(fields: [specialtyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  state       State?     @relation(fields: [stateId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([doctorId, state_id, specialty_id])
+  @@unique([doctorId, stateId, specialtyId])
   @@map("doctor_license")
 }
 
@@ -104,8 +106,8 @@ model DoctorSchedule {
   endTime                 DateTime?                 @map("end_time") @db.Time(6)
   date                    DateTime?                 @db.Date
   availabilityId          Int                       @unique
-  scheduled_end_time      DateTime?                 @db.Time(6)
-  doctor_availability     DoctorAvailability        @relation(fields: [availabilityId], references: [id])
+  scheduledEndTime        DateTime?                 @map("scheduled_end_time") @db.Time(6)
+  availability            DoctorAvailability        @relation("AvailabilitySchedule", fields: [availabilityId], references: [id])
   clinic                  Clinic?                   @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
   doctor                  Doctor?                   @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade, onUpdate: NoAction)
   doctorScheduleBreakdown DoctorScheduleBreakdown[]
@@ -130,12 +132,13 @@ model Doctor {
 model ExamRoom {
   clinicId     Int?           @map("clinic_id")
   examRoomId   Int            @id @default(autoincrement()) @map("exam_room_id")
-  specialty_id Int?
+  specialtyId  Int?           @map("specialty_id")
   status       ExamRoomStatus @default(VACANT)
   name         String?
+  capability   String?
   appointments Appointment[]
   clinic       Clinic?        @relation(fields: [clinicId], references: [clinicId], onDelete: Cascade, onUpdate: NoAction)
-  specialty    specialty[]    @relation("RoomSpecialties")
+  specialties  Specialty[]    @relation("RoomSpecialties")
 
   @@map("exam_room")
 }
@@ -155,7 +158,7 @@ model PatientHistory {
 model PatientInfo {
   patientId      Int              @id @default(autoincrement()) @map("patient_id")
   userId         Int?             @map("user_id")
-  appointment    Appointment[]
+  appointments   Appointment[]
   cards          Card[]
   patientHistory PatientHistory[]
   user           User?            @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: NoAction)
@@ -164,29 +167,17 @@ model PatientInfo {
 }
 
 model Card {
-  cardId      Int           @id @default(autoincrement()) @map("card_id")
-  patientId   Int           @map("patient_id")
-  cardNumber  String        @map("card_number")
-  cvc         String
-  expiryMonth Int           @map("expiry_month")
-  expiryYear  Int           @map("expiry_year")
-  cardName    String        @map("card_name")
-  appointment Appointment[]
-  patientInfo PatientInfo   @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  cardId       Int           @id @default(autoincrement()) @map("card_id")
+  patientId    Int           @map("patient_id")
+  cardNumber   String        @map("card_number")
+  cvc          String
+  expiryMonth  Int           @map("expiry_month")
+  expiryYear   Int           @map("expiry_year")
+  cardName     String        @map("card_name")
+  appointments Appointment[]
+  patientInfo  PatientInfo   @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
 
   @@map("card")
-}
-
-model PasswordToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  email     String?  @unique
-  role      String?  @db.VarChar(50)
-  name      String?
-
-  @@index([token])
 }
 
 model email_2fa_codes {
@@ -197,30 +188,6 @@ model email_2fa_codes {
   expires_at DateTime
   created_at DateTime @default(now())
   users      User     @relation(fields: [user_id], references: [userId], onDelete: Cascade)
-}
-
-model location {
-  id       Int      @id @default(autoincrement())
-  city     String
-  state_id Int?
-  clinic   Clinic[]
-  state    state?   @relation(fields: [state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@unique([city, state_id])
-}
-
-model specialty {
-  id             Int             @id @default(autoincrement())
-  name           String          @unique
-  doctor_license DoctorLicense[]
-  exam_room      ExamRoom[]      @relation("RoomSpecialties")
-}
-
-model state {
-  id             Int             @id @default(autoincrement())
-  name           String          @unique
-  doctor_license DoctorLicense[]
-  location       location[]
 }
 
 model two_factor_settings {
@@ -236,13 +203,54 @@ model two_factor_settings {
   users                User     @relation(fields: [user_id], references: [userId], onDelete: Cascade)
 }
 
+model Specialty {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique
+  licenses  DoctorLicense[]
+  examRooms ExamRoom[]      @relation("RoomSpecialties")
+
+  @@map("specialty")
+}
+
+model Location {
+  id      Int      @id @default(autoincrement())
+  city    String
+  stateId Int?     @map("state_id")
+  clinics Clinic[]
+  state   State?   @relation(fields: [stateId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([city, stateId])
+  @@map("location")
+}
+
+model State {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique
+  licenses  DoctorLicense[]
+  locations Location[]
+
+  @@map("state")
+}
+
+model PasswordToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  email     String?  @unique
+  role      String?  @db.VarChar(50)
+  name      String?
+
+  @@index([token])
+}
+
 enum AppointmentStatus {
   VALID
   CANCELLED
-  CANCELLED__DOCTOR_NO_LONGER_AVAILABLE @map("CANCELLED: DOCTOR NO LONGER AVAILABLE")
-  CANCELLED__BY_PATIENT                 @map("CANCELLED: BY PATIENT")
-  CANCELLED__BY_DOCTOR                  @map("CANCELLED: BY DOCTOR")
-  CANCELLED__BY_PATIENT__50_CHARGE      @map("CANCELLED: BY PATIENT $50 CHARGE")
+  CANCELLED_DOCTOR_UNAVAILABLE  @map("CANCELLED: DOCTOR NO LONGER AVAILABLE")
+  CANCELLED_BY_PATIENT          @map("CANCELLED: BY PATIENT")
+  CANCELLED_BY_DOCTOR           @map("CANCELLED: BY DOCTOR")
+  CANCELLED_PATIENT_WITH_CHARGE @map("CANCELLED: BY PATIENT $50 CHARGE")
 }
 
 enum BreakdownStatus {

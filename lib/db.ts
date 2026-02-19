@@ -1,4 +1,7 @@
 import { neon } from '@neondatabase/serverless';
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export const db = neon(process.env.DATABASE_URL!);
 
@@ -90,238 +93,266 @@ export type VeriCodeType = {
 
 export async function getDoctors() {
   try {
-    const data = await db`
-      SELECT users.name, doctors.user_id, doctors.doctor_id, doctors.doctor_info
-      FROM doctors
-      JOIN users ON doctors.user_id = users.user_id` as DoctorType[];
-    return data;
+    const data = await prisma.doctor.findMany({
+      include: {
+        user: {
+          select: { name: true }
+        }
+      }
+    })
+
+    return data.map(d => ({
+      name: d.user?.name,
+      user_id: d.userId,
+      doctor_id: d.doctorId,
+      doctor_info: d.doctorInfo
+    }))
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all doctors.');
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all doctors.')
   }
 }
+
 
 export async function getPatients() {
   try {
-    const data = await db`
-      SELECT users.name, patient_info.user_id, patient_info.patient_id
-      FROM patient_info
-      JOIN users ON patient_info.user_id = users.user_id` as PatientType[];
-    return data;
+    const data = await prisma.patientInfo.findMany({
+      include: {
+        user: {
+          select: { name: true }
+        }
+      }
+    })
+
+    return data.map(p => ({
+      name: p.user?.name,
+      user_id: p.userId,
+      patient_id: p.patientId
+    }))
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all patients.');
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all patients.')
   }
 }
+
 
 export async function getFacilities() {
   try {
-    const data = await db`
-      SELECT *
-      FROM clinic` as FacilityType[];
-    return data;
+    return await prisma.clinic.findMany()
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all facilities.');
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all facilities.')
   }
 }
+
 
 export async function getRooms(clinic_id: number) {
   try {
-    const data = await db`
-      SELECT *
-      FROM exam_room
-      WHERE exam_room.clinic_id = ${clinic_id};` as RoomType[];
-    return data;
+    return await prisma.examRoom.findMany({
+      where: { clinicId: clinic_id }
+    })
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all rooms, clinic_id = ' + clinic_id);
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all rooms, clinic_id = ' + clinic_id)
   }
 }
 
-export async function getUserInfo(email: String, password: String) {
+
+export async function getUserInfo(email: string, password: string) {
   try {
-    // Direct database query with email and password
-    const [user] = await db`
-      SELECT user_id, email, role, name 
-      FROM users 
-      WHERE email = ${email} AND password = ${password}`;
+    const user = await prisma.user.findFirst({
+      where: {
+        email,
+        password
+      },
+      select: {
+        userId: true,
+        email: true,
+        role: true,
+        name: true
+      }
+    })
 
-    return user || null;
+    return user || null
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the user information, email = ' + email);
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the user information, email = ' + email)
   }
 }
+
 
 export async function getAvailability(user_id: number) {
   try {
-    const [user] = await db`
-      SELECT doctor_id
-      FROM doctors
-      WHERE user_id = ${user_id}`;
-    const doctor_id = user?.doctor_id || 0;
-    const data = await db`
-      SELECT 
-      date,
-      TRIM(TO_CHAR(date, 'Day')) AS day,
-      start_time,
-      end_time
-      FROM doctor_availability
-      WHERE doctor_availability.doctor_id = ${doctor_id};` as AvailabilityType[];
-    return data;
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: user_id }
+    })
+
+    if (!doctor) return []
+
+    const data = await prisma.doctorAvailability.findMany({
+      where: { doctorId: doctor.doctorId }
+    })
+
+    return data.map(a => ({
+      date: a.date,
+      day: a.date?.toLocaleDateString('en-US', { weekday: 'long' }),
+      start_time: a.startTime,
+      end_time: a.endTime
+    }))
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all Available time, user_id = ' + user_id);
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all Available time, user_id = ' + user_id)
   }
 }
+
 
 export async function searchAvailability(searchBy: SearchByType) {
   try {
-    if (searchBy.specialty) {
-      const data = await db`
-    SELECT 
-    dl.doctor_id,
-    u.name,
-    dl.specialty,
-    dl.location,
-    da.date,
-    da.start_time,
-    da.end_time
-    FROM doctor_availability da
-    JOIN doctor_licenses dl ON da.doctor_id = dl.doctor_id
-    JOIN doctors d ON d.doctor_id = dl.doctor_id
-    JOIN users u ON d.user_id = u.user_id
-    WHERE da.date = ${searchBy.date} AND dl.specialty = ${searchBy.specialty}
-    ` as AvailabilityType[];
-
-      return data;
-    } else {
-      const data = await db`
-    SELECT 
-    dl.doctor_id,
-    u.name,
-    dl.specialty,
-    dl.location,
-    da.date,
-    da.start_time,
-    da.end_time
-    FROM doctor_availability da
-    JOIN doctor_licenses dl ON da.doctor_id = dl.doctor_id
-    JOIN doctors d ON d.doctor_id = dl.doctor_id
-    JOIN users u ON d.user_id = u.user_id
-    WHERE da.date = ${searchBy.date} AND dl.location = ${searchBy.location}
-    `as AvailabilityType[];
-
-      return data;
-    }
+    return await prisma.doctorAvailability.findMany({
+      where: {
+        date: searchBy.date,
+        doctor: {
+          doctorLicenses: searchBy.specialty
+            ? {
+                some: {
+                  specialty: {
+                    name: searchBy.specialty
+                  }
+                }
+              }
+            : {
+                some: {
+                  state: {
+                    name: searchBy.location
+                  }
+                }
+              }
+        }
+      },
+      include: {
+        doctor: {
+          include: {
+            user: true,
+            doctorLicenses: {
+              include: {
+                specialty: true,
+                state: true
+              }
+            }
+          }
+        }
+      }
+    })
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to search the Available time, SearchBy = ' + JSON.stringify(searchBy));
+    console.error('Database Error:', error)
+    throw new Error(
+      'Failed to search the Available time, SearchBy = ' +
+        JSON.stringify(searchBy)
+    )
   }
 }
+
 
 export async function getAppointmentByPatientId(user_id: number) {
   try {
-    const futureData = await db`
-      SELECT 
-      da.appointment_id,
-      da.duration::text AS duration,
-      da.start_time,
-      TO_CHAR(da.date::timestamp, 'Month DD, YYYY') AS date,
-      da.doctor_id,
-      u.name
-      FROM appointments da
-      JOIN patient_info dl ON da.patient_id = dl.patient_id
-      JOIN doctors d ON da.doctor_id = d.doctor_id
-      JOIN users u ON d.user_id = u.user_id
-      WHERE dl.user_id = ${user_id}
-      AND da.date >= CURRENT_DATE
-      AND (da.date > CURRENT_DATE OR da.start_time >= CURRENT_TIME)
-      ORDER BY da.date, start_time;` as AppointmentType[]
-    const pastData = await db`
-      SELECT 
-      da.appointment_id,
-      da.duration::text AS duration,
-      da.start_time,
-      TO_CHAR(da.date::timestamp, 'Month DD, YYYY') AS date,
-      da.doctor_id,
-      u.name
-      FROM appointments da
-      JOIN patient_info dl ON da.patient_id = dl.patient_id
-      JOIN doctors d ON da.doctor_id = d.doctor_id
-      JOIN users u ON d.user_id = u.user_id
-      WHERE dl.user_id = ${user_id}
-      AND da.date <= CURRENT_DATE
-      AND (da.date < CURRENT_DATE OR da.start_time < CURRENT_TIME)
-      ORDER BY da.date, start_time;` as AppointmentType[]
-    return [pastData, futureData];
+    const patient = await prisma.patientInfo.findFirst({
+      where: { userId: user_id }
+    })
+
+    if (!patient) return [[], []]
+
+    const now = new Date()
+
+    const appointments = await prisma.appointment.findMany({
+      where: { patientId: patient.patientId },
+      include: {
+        doctor: {
+          include: {
+            user: true
+          }
+        }
+      },
+      orderBy: [
+        { date: 'asc' },
+        { startTime: 'asc' }
+      ]
+    })
+
+    const past = appointments.filter(a => new Date(a.date!) < now)
+    const future = appointments.filter(a => new Date(a.date!) >= now)
+
+    return [past, future]
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to get the all appointments, user_id = ' + user_id);
+    console.error('Database Error:', error)
+    throw new Error('Failed to get the all appointments, user_id = ' + user_id)
   }
 }
+
 
 export async function getAppointmentByDoctorId(user_id: number) {
   try {
-    const todayData = await db`
-      SELECT 
-      da.appointment_id,
-      da.duration::text AS duration,
-      da.start_time,
-      TO_CHAR(da.date::timestamp, 'Month DD, YYYY') AS date,
-      da.doctor_id,
-      u.name
-      FROM appointments da
-      JOIN doctors d ON da.doctor_id = d.doctor_id
-      JOIN users u ON d.user_id = u.user_id
-      WHERE d.user_id = ${user_id}
-      AND da.date = CURRENT_DATE
-      ORDER BY da.date, start_time;` as AppointmentType[]
-    const futureData = await db`
-      SELECT 
-      da.appointment_id,
-      da.duration::text AS duration,
-      da.start_time,
-      TO_CHAR(da.date::timestamp, 'Month DD, YYYY') AS date,
-      da.doctor_id,
-      u.name
-      FROM appointments da
-      JOIN doctors d ON da.doctor_id = d.doctor_id
-      JOIN users u ON d.user_id = u.user_id
-      WHERE d.user_id = ${user_id}
-      AND da.date > CURRENT_DATE
-      ORDER BY da.date, start_time;` as AppointmentType[]
-    console.log("db", JSON.stringify([todayData, futureData]))
-    return [todayData, futureData];
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: user_id }
+    })
+
+    if (!doctor) return [[], []]
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const appointments = await prisma.appointment.findMany({
+      where: { doctorId: doctor.doctorId },
+      include: {
+        doctor: {
+          include: { user: true }
+        }
+      },
+      orderBy: [
+        { date: 'asc' },
+        { startTime: 'asc' }
+      ]
+    })
+
+    const todayAppointments = appointments.filter(a =>
+      a.date?.toDateString() === new Date().toDateString()
+    )
+
+    const futureAppointments = appointments.filter(a =>
+      a.date! > today
+    )
+
+    return [todayAppointments, futureAppointments]
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to get the all appointments, user_id = ' + user_id);
+    console.error('Database Error:', error)
+    throw new Error('Failed to get the all appointments, user_id = ' + user_id)
   }
 }
+
 
 export async function getLicenses(doctor_id: number) {
   try {
-    const data = await db`
-      SELECT *
-      FROM doctor_license
-      WHERE doctor_license.doctor_id = ${doctor_id};` as LicenseType[];
-    return data;
+    return await prisma.doctorLicense.findMany({
+      where: { doctorId: doctor_id },
+      include: {
+        specialty: true,
+        state: true
+      }
+    })
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all licenses, doctor_id = ' + doctor_id);
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all licenses, doctor_id = ' + doctor_id)
   }
 }
 
+
 export async function getUsers() {
   try {
-    const data = await db`
-      SELECT *, TO_CHAR(dob, 'YYYY-MM-DD') AS dob
-      FROM users
-      ORDER BY user_id;` as UserType[];
-    return data;
+    return await prisma.user.findMany({
+      orderBy: { userId: 'asc' }
+    })
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the all users.');
+    console.error('Database Error:', error)
+    throw new Error('Failed to fetch the all users.')
   }
 }
+

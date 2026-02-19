@@ -18,6 +18,7 @@ export type DoctorType = {
   export type FacilityType = {
     clinic_id: number;
     location: string;
+    location_id: number;
   };
   
   export type RoomType = {
@@ -74,6 +75,8 @@ export type DoctorType = {
     doctor_id: number;
     location: string;
     specialty: string;
+    state_id: number;
+    specialty_id: number;
   };
   
   export type UserType = {
